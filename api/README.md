@@ -43,7 +43,12 @@ pytest
 | `GET`    | `/v1/sources` | — | Registre public des sources |
 | `GET`    | `/v1/leaks` | clé | Observations (filtres `category`, `severity`, pagination) |
 | `GET`    | `/v1/leaks/{id}` | clé | Détail d'une observation + sa source |
+| `POST`   | `/v1/leaks/{id}/resolve` | clé écriture | Résoudre une observation (émet `leak.resolved`) |
 | `POST`   | `/v1/search` | clé | Recherche par entité (limitée au périmètre vérifié) |
+| `GET`    | `/v1/alerts` | clé | Observations qui touchent le périmètre vérifié |
+| `PATCH`  | `/v1/alerts/{id}` | clé écriture | Mettre à jour le statut d'une alerte |
+| `GET`    | `/v1/usage` | clé | Quota et consommation du mois |
+| `GET`    | `/v1/events` | clé | Flux temps réel (SSE) des alertes du périmètre |
 | `POST`   | `/v1/monitors` | clé écriture | Créer un monitor (domaine → vérification DNS TXT) |
 | `GET`    | `/v1/monitors` | clé | Lister ses monitors (filtres `type`, `status`) |
 | `GET`    | `/v1/monitors/{id}` | clé | Détail d'un monitor |

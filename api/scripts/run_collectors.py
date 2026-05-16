@@ -22,9 +22,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from sqlmodel import Session, select  # noqa: E402
 
 from app.db import engine, init_db, purge_expired  # noqa: E402
-from app.models import Leak  # noqa: E402
+from app.kyb import is_in_scope  # noqa: E402
+from app.models import Leak, Monitor, Org  # noqa: E402
 from app.sources import ALL_COLLECTORS  # noqa: E402
 from app.sources.base import dedup_hash  # noqa: E402
+from app.webhooks import dispatch  # noqa: E402
 
 
 def _load_fixtures(specs: list[str], parser: argparse.ArgumentParser) -> dict[str, object]:
@@ -54,7 +56,8 @@ def main() -> None:
     fixtures = _load_fixtures(args.fixture, parser)
 
     init_db()
-    inserted = skipped = 0
+    inserted = skipped = notified = 0
+    new_leaks: list[Leak] = []
 
     with Session(engine) as session:
         purged = purge_expired(session)
@@ -72,20 +75,42 @@ def main() -> None:
                 if already_known:
                     skipped += 1
                     continue
-                session.add(
-                    Leak(
-                        source_id=collector.source.id,
-                        dedup_hash=digest,
-                        **finding.model_dump(),
-                    )
+                leak = Leak(
+                    source_id=collector.source.id,
+                    dedup_hash=digest,
+                    **finding.model_dump(),
                 )
+                session.add(leak)
+                new_leaks.append(leak)
                 inserted += 1
 
         session.commit()
 
+        # Fan-out : notifie chaque organisation dont le périmètre vérifié est
+        # touché par une nouvelle observation (événement webhook leak.detected).
+        for org in session.exec(select(Org)).all():
+            monitors = session.exec(select(Monitor).where(Monitor.org_id == org.id)).all()
+            for leak in new_leaks:
+                if is_in_scope(monitors, leak.entity_kind, leak.entity):
+                    notified += dispatch(
+                        session,
+                        org.id,
+                        "leak.detected",
+                        {
+                            "leak": {
+                                "id": leak.id,
+                                "title": leak.title,
+                                "severity": leak.severity,
+                                "entity": leak.entity,
+                                "category": leak.category,
+                            }
+                        },
+                    )
+
     print(
         f"Collecte terminée : {inserted} nouvelle(s), "
-        f"{skipped} déjà connue(s), {purged} purgée(s) (rétention 30 j)."
+        f"{skipped} déjà connue(s), {purged} purgée(s) (rétention 30 j). "
+        f"{notified} notification(s) webhook leak.detected."
     )
 
 

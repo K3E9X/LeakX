@@ -48,3 +48,9 @@ class WebhookCreate(BaseModel):
 
     url: str
     events: Optional[list[str]] = None  # None -> tous les types d'événement
+
+
+class AlertUpdate(BaseModel):
+    """Corps de `PATCH /v1/alerts/{id}`."""
+
+    status: str  # open | progress | resolved

@@ -9,6 +9,8 @@ soumises au rate limiting, sauf `/v1/sources` (registre public) et `/health`.
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -16,16 +18,17 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import func
 from sqlmodel import Session, select
 
+from .alerts import ALERT_STATUSES, get_statuses, set_status
 from .auth import KEY_TYPES, generate_api_key, hash_secret, parse_token, verify_secret
 from .db import engine, get_session, init_db
 from .kyb import expected_txt_record, is_in_scope, new_verification_token, verify_domain
-from .models import ApiKey, Leak, Monitor, Org, Source, Webhook
+from .models import AlertState, ApiKey, Leak, Monitor, Org, Source, Webhook
 from .ratelimit import TIERS, consume_token, current_usage, increment_usage
-from .schemas import ApiKeyCreate, MonitorCreate, SearchRequest, WebhookCreate
+from .schemas import AlertUpdate, ApiKeyCreate, MonitorCreate, SearchRequest, WebhookCreate
 from .util import new_id, utcnow
 from .webhooks import EVENT_TYPES, dispatch, new_webhook_secret
 
@@ -112,10 +115,8 @@ class AuthContext:
     key_type: str  # live | test | readonly
 
 
-def require_auth(
-    authorization: Optional[str] = Header(default=None),
-    session: Session = Depends(get_session),
-) -> AuthContext:
+def _authenticate(authorization: Optional[str], session: Session) -> AuthContext:
+    """Résout un header `Authorization: Bearer …` en `AuthContext`."""
     if not authorization or not authorization.startswith("Bearer "):
         raise LeakXError(401, "unauthorized", "Clé API manquante (header Authorization).")
 
@@ -137,6 +138,13 @@ def require_auth(
     session.add(api_key)
     session.commit()
     return AuthContext(org_id=api_key.org_id, key_id=api_key.id, key_type=api_key.type)
+
+
+def require_auth(
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+) -> AuthContext:
+    return _authenticate(authorization, session)
 
 
 def rate_limited(
@@ -589,3 +597,160 @@ def delete_webhook(
     session.delete(webhook)
     session.commit()
     return Response(status_code=204)
+
+
+# --------------------------------------------------------------------------
+# Quota d'usage
+# --------------------------------------------------------------------------
+@app.get("/v1/usage")
+def get_usage(
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(rate_limited),
+) -> dict:
+    org = session.get(Org, auth.org_id)
+    plan = org.plan if org else "community"
+    tier = TIERS.get(plan, TIERS["community"])
+    used = current_usage(session, auth.org_id)
+    quota = tier.monthly_quota
+    return envelope(
+        {
+            "plan": plan,
+            "period": utcnow().strftime("%Y-%m"),
+            "requests_used": used,
+            "monthly_quota": quota,
+            "requests_remaining": None if quota is None else max(0, quota - used),
+            "rpm_limit": tier.rpm,
+        },
+        ctx,
+    )
+
+
+# --------------------------------------------------------------------------
+# Alertes — observations qui touchent le périmètre vérifié de l'organisation.
+# Le statut de traitement est propre à chaque organisation (cf. alerts.py).
+# --------------------------------------------------------------------------
+def _leak_in_org_scope(session: Session, org_id: str, leak: Leak) -> bool:
+    monitors = session.exec(select(Monitor).where(Monitor.org_id == org_id)).all()
+    return is_in_scope(monitors, leak.entity_kind, leak.entity)
+
+
+@app.get("/v1/alerts")
+def list_alerts(
+    severity: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(rate_limited),
+) -> dict:
+    limit = max(1, min(limit, 200))
+    monitors = session.exec(select(Monitor).where(Monitor.org_id == auth.org_id)).all()
+    recent = session.exec(select(Leak).order_by(Leak.collected_at.desc()).limit(500)).all()
+    in_perimeter = [lk for lk in recent if is_in_scope(monitors, lk.entity_kind, lk.entity)]
+    statuses = get_statuses(session, auth.org_id, [lk.id for lk in in_perimeter])
+
+    alerts = []
+    for leak in in_perimeter:
+        state = statuses.get(leak.id, "open")
+        if status and state != status:
+            continue
+        if severity and leak.severity != severity:
+            continue
+        alerts.append({"leak": leak, "status": state})
+        if len(alerts) >= limit:
+            break
+    return envelope({"alerts": alerts, "total": len(alerts)}, ctx)
+
+
+@app.patch("/v1/alerts/{leak_id}")
+def update_alert(
+    leak_id: str,
+    body: AlertUpdate,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(rate_limited_write),
+) -> dict:
+    new_status = body.status.strip().lower()
+    if new_status not in ALERT_STATUSES:
+        raise LeakXError(422, "validation_error", f"Statut inconnu : {body.status!r}.")
+    leak = session.get(Leak, leak_id)
+    if leak is None:
+        raise LeakXError(404, "not_found", f"Aucune observation avec l'identifiant {leak_id}.")
+    if not _leak_in_org_scope(session, auth.org_id, leak):
+        raise LeakXError(403, "outside_scope", "Cette observation n'est pas dans votre périmètre.")
+    state = set_status(session, auth.org_id, leak_id, new_status)
+    return envelope({"alert": {"leak": leak, "status": state.status}}, ctx)
+
+
+@app.post("/v1/leaks/{leak_id}/resolve")
+def resolve_leak(
+    leak_id: str,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(rate_limited_write),
+) -> dict:
+    leak = session.get(Leak, leak_id)
+    if leak is None:
+        raise LeakXError(404, "not_found", f"Aucune observation avec l'identifiant {leak_id}.")
+    if not _leak_in_org_scope(session, auth.org_id, leak):
+        raise LeakXError(403, "outside_scope", "Cette observation n'est pas dans votre périmètre.")
+    state = set_status(session, auth.org_id, leak_id, "resolved")
+    dispatch(
+        session,
+        auth.org_id,
+        "leak.resolved",
+        {"leak": {"id": leak.id, "entity": leak.entity, "severity": leak.severity}},
+    )
+    return envelope({"alert": {"leak": leak, "status": state.status}}, ctx)
+
+
+# --------------------------------------------------------------------------
+# Flux d'événements temps réel (Server-Sent Events).
+# Implémentation par sondage (15 s) ; passera à PostgreSQL LISTEN/NOTIFY en
+# production pour de l'événementiel pur.
+# --------------------------------------------------------------------------
+@app.get("/v1/events")
+async def stream_events(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+) -> StreamingResponse:
+    with Session(engine) as session:
+        auth = _authenticate(authorization, session)
+
+    async def event_stream():
+        last_check = utcnow()
+        yield ": flux LeakX ouvert\n\n"
+        while True:
+            if await request.is_disconnected():
+                break
+            with Session(engine) as session:
+                monitors = session.exec(
+                    select(Monitor).where(Monitor.org_id == auth.org_id)
+                ).all()
+                new_leaks = session.exec(
+                    select(Leak)
+                    .where(Leak.collected_at > last_check)
+                    .order_by(Leak.collected_at)
+                ).all()
+                for leak in new_leaks:
+                    if not is_in_scope(monitors, leak.entity_kind, leak.entity):
+                        continue
+                    event = {
+                        "id": new_id("evt"),
+                        "type": "leak.detected",
+                        "data": {
+                            "leak": {
+                                "id": leak.id,
+                                "title": leak.title,
+                                "severity": leak.severity,
+                                "entity": leak.entity,
+                            }
+                        },
+                    }
+                    yield f"event: leak.detected\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+            last_check = utcnow()
+            yield ": keep-alive\n\n"
+            await asyncio.sleep(15)
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

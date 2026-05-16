@@ -139,3 +139,18 @@ class WebhookDelivery(SQLModel, table=True):
     last_error: Optional[str] = None
     created_at: datetime = Field(default_factory=utcnow)
     delivered_at: Optional[datetime] = None
+
+
+class AlertState(SQLModel, table=True):
+    """Statut de traitement d'une observation, propre à chaque organisation.
+
+    Une observation (`Leak`) est partagée par tous les clients ; son suivi
+    (open / progress / resolved) est en revanche par organisation. Ce statut
+    ne modifie donc jamais l'observation globale (multi-tenant).
+    """
+
+    id: str = Field(primary_key=True)  # "{org_id}|{leak_id}"
+    org_id: str = Field(index=True)
+    leak_id: str = Field(index=True)
+    status: str = "open"  # open | progress | resolved
+    updated_at: datetime = Field(default_factory=utcnow)
