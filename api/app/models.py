@@ -102,3 +102,12 @@ class ApiKey(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
     last_used_at: Optional[datetime] = None
     revoked_at: Optional[datetime] = None
+
+
+class UsageCounter(SQLModel, table=True):
+    """Compteur de requêtes par organisation et par mois (quota mensuel)."""
+
+    id: str = Field(primary_key=True)  # "{org_id}|{YYYY-MM}"
+    org_id: str = Field(index=True)
+    period: str  # "YYYY-MM"
+    count: int = 0
