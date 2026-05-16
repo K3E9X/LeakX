@@ -111,3 +111,31 @@ class UsageCounter(SQLModel, table=True):
     org_id: str = Field(index=True)
     period: str  # "YYYY-MM"
     count: int = 0
+
+
+class Webhook(SQLModel, table=True):
+    """Endpoint HTTP d'une organisation, notifié des événements LeakX."""
+
+    id: str = Field(default_factory=lambda: new_id("wh"), primary_key=True)
+    org_id: str = Field(foreign_key="org.id", index=True)
+    url: str
+    secret: str  # secret de signature HMAC — à chiffrer au repos en production
+    events: str = "*"  # types souscrits séparés par des virgules, ou "*"
+    status: str = "active"  # active | disabled
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class WebhookDelivery(SQLModel, table=True):
+    """Une tentative de livraison d'un événement à un webhook."""
+
+    id: str = Field(default_factory=lambda: new_id("evt"), primary_key=True)
+    webhook_id: str = Field(foreign_key="webhook.id", index=True)
+    org_id: str = Field(index=True)
+    event_type: str
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    status: str = "pending"  # pending | delivered | failed
+    attempts: int = 0
+    next_attempt_at: datetime = Field(default_factory=utcnow, index=True)
+    last_error: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow)
+    delivered_at: Optional[datetime] = None

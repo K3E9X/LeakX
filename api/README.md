@@ -52,6 +52,9 @@ pytest
 | `GET`    | `/v1/keys` | clé | Lister ses clés API |
 | `POST`   | `/v1/keys` | clé écriture | Générer une clé (token affiché une seule fois) |
 | `DELETE` | `/v1/keys/{id}` | clé écriture | Révoquer une clé |
+| `POST`   | `/v1/webhooks` | clé écriture | Créer un webhook (secret affiché une seule fois) |
+| `GET`    | `/v1/webhooks` | clé | Lister ses webhooks |
+| `DELETE` | `/v1/webhooks/{id}` | clé écriture | Supprimer un webhook |
 
 **Authentification** : header `Authorization: Bearer lkx_<type>_…`. Trois types
 de clés — `live`, `test`, `readonly` (les clés `readonly` ne peuvent pas muter).
@@ -62,6 +65,11 @@ par minute et un quota mensuel (cf. CLAUDE.md §5). Les réponses portent les
 headers `X-RateLimit-Limit/-Remaining/-Reset` ; un dépassement de débit renvoie
 `429 rate_limited` (+ `Retry-After`), un quota mensuel épuisé `402 payment_required`.
 Les clés `test` ne consomment pas le quota mensuel.
+
+**Webhooks** : chaque événement (`leak.detected`, `monitor.verified`, …) est
+livré en HTTP POST signé `X-LeakX-Signature: t=<ts>,v1=<hmac_sha256>`. La
+livraison est rejouée en backoff exponentiel (max 12 tentatives sur ~24 h) par
+le worker `scripts/deliver_webhooks.py`, à lancer périodiquement (cron).
 
 **KYB** : un monitor `domain` reste `verifying` jusqu'à ce qu'un quorum de
 résolveurs DNS voie l'enregistrement `leakx-verification=<token>`. Un monitor

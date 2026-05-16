@@ -41,3 +41,10 @@ class ApiKeyCreate(BaseModel):
 
     type: str = "live"
     label: str = ""
+
+
+class WebhookCreate(BaseModel):
+    """Corps de `POST /v1/webhooks`."""
+
+    url: str
+    events: Optional[list[str]] = None  # None -> tous les types d'événement

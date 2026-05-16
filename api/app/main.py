@@ -23,10 +23,11 @@ from sqlmodel import Session, select
 from .auth import KEY_TYPES, generate_api_key, hash_secret, parse_token, verify_secret
 from .db import engine, get_session, init_db
 from .kyb import expected_txt_record, is_in_scope, new_verification_token, verify_domain
-from .models import ApiKey, Leak, Monitor, Org, Source
+from .models import ApiKey, Leak, Monitor, Org, Source, Webhook
 from .ratelimit import TIERS, consume_token, current_usage, increment_usage
-from .schemas import ApiKeyCreate, MonitorCreate, SearchRequest
+from .schemas import ApiKeyCreate, MonitorCreate, SearchRequest, WebhookCreate
 from .util import new_id, utcnow
+from .webhooks import EVENT_TYPES, dispatch, new_webhook_secret
 
 MONITOR_TYPES = {"domain", "email", "ip", "vip", "brand", "repo"}
 
@@ -427,6 +428,12 @@ def verify_monitor(
         session.add(monitor)
         session.commit()
         session.refresh(monitor)
+        dispatch(
+            session,
+            auth.org_id,
+            "monitor.verified",
+            {"monitor": {"id": monitor.id, "type": monitor.type, "value": monitor.value}},
+        )
     return envelope({"monitor": monitor, "verified": verified}, ctx)
 
 
@@ -508,3 +515,77 @@ def revoke_key(
         session.commit()
         session.refresh(api_key)
     return envelope({"key": _api_key_public(api_key)}, ctx)
+
+
+# --------------------------------------------------------------------------
+# Webhooks — notifications signées HMAC des événements (cf. CLAUDE.md §5).
+# --------------------------------------------------------------------------
+def _webhook_public(webhook: Webhook) -> dict:
+    """Vue d'un webhook sans le secret de signature complet."""
+    return {
+        "id": webhook.id,
+        "url": webhook.url,
+        "events": webhook.events,
+        "status": webhook.status,
+        "secret_hint": webhook.secret[:11] + "…",
+        "created_at": webhook.created_at,
+    }
+
+
+@app.post("/v1/webhooks", status_code=201)
+def create_webhook(
+    body: WebhookCreate,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(rate_limited_write),
+) -> dict:
+    url = body.url.strip()
+    if not (url.startswith("https://") or url.startswith("http://")):
+        raise LeakXError(422, "validation_error", "L'URL du webhook doit être en http(s).")
+
+    events = "*"
+    if body.events:
+        unknown = [e for e in body.events if e not in EVENT_TYPES]
+        if unknown:
+            raise LeakXError(422, "validation_error", f"Types d'événement inconnus : {unknown}.")
+        events = ",".join(body.events)
+
+    webhook = Webhook(org_id=auth.org_id, url=url, secret=new_webhook_secret(), events=events)
+    session.add(webhook)
+    session.commit()
+    session.refresh(webhook)
+
+    return envelope(
+        {
+            "webhook": _webhook_public(webhook),
+            "secret": webhook.secret,
+            "warning": "Ce secret de signature n'est affiché qu'une seule fois.",
+        },
+        ctx,
+    )
+
+
+@app.get("/v1/webhooks")
+def list_webhooks(
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(rate_limited),
+) -> dict:
+    webhooks = session.exec(
+        select(Webhook).where(Webhook.org_id == auth.org_id).order_by(Webhook.created_at.desc())
+    ).all()
+    return envelope({"webhooks": [_webhook_public(w) for w in webhooks]}, ctx)
+
+
+@app.delete("/v1/webhooks/{webhook_id}", status_code=204)
+def delete_webhook(
+    webhook_id: str,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(rate_limited_write),
+) -> Response:
+    webhook = session.get(Webhook, webhook_id)
+    if webhook is None or webhook.org_id != auth.org_id:
+        raise LeakXError(404, "not_found", f"Aucun webhook avec l'identifiant {webhook_id}.")
+    session.delete(webhook)
+    session.commit()
+    return Response(status_code=204)
