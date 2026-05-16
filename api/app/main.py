@@ -1,25 +1,30 @@
-"""API REST LeakX — endpoints de lecture sur les observations collectées.
+"""API REST LeakX.
 
 Les réponses suivent l'enveloppe standard décrite dans CLAUDE.md §6 :
     succès -> {"data": ..., "meta": {"request_id", "duration_ms"}}
     erreur -> {"error": {"code", "message", "request_id"}}
+
+Toutes les routes `/v1` sont authentifiées par clé API (Bearer token), sauf
+`/v1/sources` (registre public, transparence) et `/health`.
 """
 from __future__ import annotations
 
 import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Query, Request, Response
+from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlmodel import Session, select
 
+from .auth import KEY_TYPES, generate_api_key, hash_secret, parse_token, verify_secret
 from .db import engine, get_session, init_db
-from .kyb import expected_txt_record, new_verification_token, verify_domain
-from .models import Leak, Monitor, Source
-from .schemas import MonitorCreate, SearchRequest
+from .kyb import expected_txt_record, is_in_scope, new_verification_token, verify_domain
+from .models import ApiKey, Leak, Monitor, Source
+from .schemas import ApiKeyCreate, MonitorCreate, SearchRequest
 from .util import new_id, utcnow
 
 MONITOR_TYPES = {"domain", "email", "ip", "vip", "brand", "repo"}
@@ -35,7 +40,7 @@ app = FastAPI(title="LeakX API", version="0.1.0", lifespan=lifespan)
 
 
 # --------------------------------------------------------------------------
-# Gestion d'erreurs : on respecte le format d'erreur métier de CLAUDE.md §6.
+# Gestion d'erreurs : format d'erreur métier de CLAUDE.md §6.
 # --------------------------------------------------------------------------
 class LeakXError(Exception):
     def __init__(self, status: int, code: str, message: str) -> None:
@@ -88,7 +93,64 @@ def envelope(data: object, ctx: Ctx) -> dict:
 
 
 # --------------------------------------------------------------------------
-# Endpoints
+# Authentification par clé API (Bearer token).
+# --------------------------------------------------------------------------
+@dataclass
+class AuthContext:
+    org_id: str
+    key_id: str
+    key_type: str  # live | test | readonly
+
+
+def require_auth(
+    authorization: Optional[str] = Header(default=None),
+    session: Session = Depends(get_session),
+) -> AuthContext:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise LeakXError(401, "unauthorized", "Clé API manquante (header Authorization).")
+
+    parsed = parse_token(authorization[len("Bearer "):].strip())
+    if parsed is None:
+        raise LeakXError(401, "unauthorized", "Clé API malformée.")
+    key_type, public_id, secret = parsed
+
+    api_key = session.exec(select(ApiKey).where(ApiKey.public_id == public_id)).first()
+    if (
+        api_key is None
+        or api_key.revoked_at is not None
+        or api_key.type != key_type
+        or not verify_secret(secret, api_key.secret_hash)
+    ):
+        raise LeakXError(401, "unauthorized", "Clé API invalide ou révoquée.")
+
+    api_key.last_used_at = utcnow()
+    session.add(api_key)
+    session.commit()
+    return AuthContext(org_id=api_key.org_id, key_id=api_key.id, key_type=api_key.type)
+
+
+def require_write(auth: AuthContext = Depends(require_auth)) -> AuthContext:
+    """Refuse les clés en lecture seule sur les routes de mutation."""
+    if auth.key_type == "readonly":
+        raise LeakXError(403, "forbidden", "Cette clé est en lecture seule (lkx_readonly_).")
+    return auth
+
+
+def _api_key_public(key: ApiKey) -> dict:
+    """Vue d'une clé API sans le secret haché."""
+    return {
+        "id": key.id,
+        "public_id": key.public_id,
+        "type": key.type,
+        "label": key.label,
+        "created_at": key.created_at,
+        "last_used_at": key.last_used_at,
+        "revoked_at": key.revoked_at,
+    }
+
+
+# --------------------------------------------------------------------------
+# Endpoints publics
 # --------------------------------------------------------------------------
 @app.get("/health")
 def health() -> dict:
@@ -105,6 +167,9 @@ def list_sources(
     return envelope({"sources": sources}, ctx)
 
 
+# --------------------------------------------------------------------------
+# Observations (authentifié)
+# --------------------------------------------------------------------------
 @app.get("/v1/leaks")
 def list_leaks(
     category: Optional[str] = None,
@@ -113,6 +178,7 @@ def list_leaks(
     offset: int = 0,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_auth),
 ) -> dict:
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
@@ -141,6 +207,7 @@ def get_leak(
     leak_id: str,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_auth),
 ) -> dict:
     leak = session.get(Leak, leak_id)
     if leak is None:
@@ -154,14 +221,26 @@ def search(
     body: SearchRequest,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_auth),
 ) -> dict:
     value = body.value.strip()
     if not value:
         raise LeakXError(422, "validation_error", "Le champ `value` ne peut pas être vide.")
 
+    # KYB : la recherche est limitée au périmètre vérifié de l'organisation.
+    monitors = session.exec(
+        select(Monitor).where(Monitor.org_id == auth.org_id)
+    ).all()
+    if not is_in_scope(monitors, (body.type or "").lower(), value):
+        raise LeakXError(
+            403,
+            "outside_scope",
+            "L'entité recherchée n'est pas dans votre périmètre vérifié.",
+        )
+
     leaks = session.exec(
         select(Leak)
-        .where(Leak.entity.ilike(f"%{value}%"))
+        .where(Leak.entity.ilike(f"%{value.lower()}%"))
         .order_by(Leak.collected_at.desc())
         .limit(100)
     ).all()
@@ -189,6 +268,7 @@ def create_monitor(
     body: MonitorCreate,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_write),
 ) -> dict:
     monitor_type = body.type.strip().lower()
     if monitor_type not in MONITOR_TYPES:
@@ -197,7 +277,7 @@ def create_monitor(
     if not value:
         raise LeakXError(422, "validation_error", "Le champ `value` est requis.")
 
-    monitor = Monitor(org_id=body.org_id, type=monitor_type, value=value)
+    monitor = Monitor(org_id=auth.org_id, type=monitor_type, value=value)
 
     if monitor_type == "domain":
         # KYB : preuve de contrôle exigée avant activation.
@@ -209,7 +289,7 @@ def create_monitor(
         domain = value.rsplit("@", 1)[-1] if "@" in value else ""
         verified_domain = session.exec(
             select(Monitor).where(
-                Monitor.org_id == body.org_id,
+                Monitor.org_id == auth.org_id,
                 Monitor.type == "domain",
                 Monitor.value == domain,
                 Monitor.status == "active",
@@ -251,15 +331,13 @@ def create_monitor(
 
 @app.get("/v1/monitors")
 def list_monitors(
-    org_id: Optional[str] = None,
     status: Optional[str] = None,
     type_filter: Optional[str] = Query(default=None, alias="type"),
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_auth),
 ) -> dict:
-    query = select(Monitor)
-    if org_id:
-        query = query.where(Monitor.org_id == org_id)
+    query = select(Monitor).where(Monitor.org_id == auth.org_id)
     if status:
         query = query.where(Monitor.status == status)
     if type_filter:
@@ -273,9 +351,10 @@ def get_monitor(
     monitor_id: str,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_auth),
 ) -> dict:
     monitor = session.get(Monitor, monitor_id)
-    if monitor is None:
+    if monitor is None or monitor.org_id != auth.org_id:
         raise LeakXError(404, "not_found", f"Aucun monitor avec l'identifiant {monitor_id}.")
     return envelope({"monitor": monitor}, ctx)
 
@@ -285,9 +364,10 @@ def verify_monitor(
     monitor_id: str,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_write),
 ) -> dict:
     monitor = session.get(Monitor, monitor_id)
-    if monitor is None:
+    if monitor is None or monitor.org_id != auth.org_id:
         raise LeakXError(404, "not_found", f"Aucun monitor avec l'identifiant {monitor_id}.")
     if monitor.verification_method != "dns_txt" or not monitor.verification_token:
         raise LeakXError(422, "validation_error", "Ce monitor ne se vérifie pas par DNS TXT.")
@@ -308,10 +388,77 @@ def verify_monitor(
 def delete_monitor(
     monitor_id: str,
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_write),
 ) -> Response:
     monitor = session.get(Monitor, monitor_id)
-    if monitor is None:
+    if monitor is None or monitor.org_id != auth.org_id:
         raise LeakXError(404, "not_found", f"Aucun monitor avec l'identifiant {monitor_id}.")
     session.delete(monitor)
     session.commit()
     return Response(status_code=204)
+
+
+# --------------------------------------------------------------------------
+# Clés API
+# --------------------------------------------------------------------------
+@app.get("/v1/keys")
+def list_keys(
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_auth),
+) -> dict:
+    keys = session.exec(
+        select(ApiKey).where(ApiKey.org_id == auth.org_id).order_by(ApiKey.created_at.desc())
+    ).all()
+    return envelope({"keys": [_api_key_public(k) for k in keys]}, ctx)
+
+
+@app.post("/v1/keys", status_code=201)
+def create_key(
+    body: ApiKeyCreate,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_write),
+) -> dict:
+    key_type = body.type.strip().lower()
+    if key_type not in KEY_TYPES:
+        raise LeakXError(422, "validation_error", f"Type de clé inconnu : {body.type!r}.")
+
+    token, public_id, secret = generate_api_key(key_type)
+    api_key = ApiKey(
+        org_id=auth.org_id,
+        public_id=public_id,
+        type=key_type,
+        secret_hash=hash_secret(secret),
+        label=body.label.strip(),
+    )
+    session.add(api_key)
+    session.commit()
+    session.refresh(api_key)
+
+    return envelope(
+        {
+            "key": _api_key_public(api_key),
+            "token": token,
+            "warning": "Cette clé n'est affichée qu'une seule fois — conservez-la maintenant.",
+        },
+        ctx,
+    )
+
+
+@app.delete("/v1/keys/{key_id}")
+def revoke_key(
+    key_id: str,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_write),
+) -> dict:
+    api_key = session.get(ApiKey, key_id)
+    if api_key is None or api_key.org_id != auth.org_id:
+        raise LeakXError(404, "not_found", f"Aucune clé avec l'identifiant {key_id}.")
+    if api_key.revoked_at is None:
+        api_key.revoked_at = utcnow()
+        session.add(api_key)
+        session.commit()
+        session.refresh(api_key)
+    return envelope({"key": _api_key_public(api_key)}, ctx)

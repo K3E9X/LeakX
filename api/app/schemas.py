@@ -30,9 +30,14 @@ class SearchRequest(BaseModel):
 
 
 class MonitorCreate(BaseModel):
-    """Corps de `POST /v1/monitors`."""
+    """Corps de `POST /v1/monitors`. L'organisation provient de la clé API."""
 
     type: str
     value: str
-    # Placeholder tant que l'authentification n'est pas en place.
-    org_id: str = "org_dev"
+
+
+class ApiKeyCreate(BaseModel):
+    """Corps de `POST /v1/keys`."""
+
+    type: str = "live"
+    label: str = ""
