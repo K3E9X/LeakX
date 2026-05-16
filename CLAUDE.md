@@ -55,6 +55,7 @@ Le repo contient un **prototype haute-fidélité React+HTML** (pas encore Next.j
 - Modèle de données **provenance-first** : `source_id` + `source_ref` obligatoires sur chaque observation
 - Endpoints branchés sur de vraies données : lecture (`/v1/sources`, `/v1/leaks`, `/v1/search`) + KYB (`/v1/monitors` + vérification de domaine par DNS TXT) + clés API (`/v1/keys`)
 - Authentification Bearer : clés `lkx_{live,test,readonly}_…`, secret haché Argon2id, recherche hors périmètre rejetée (`403 outside_scope`)
+- Rate limiting par tier : débit/minute + quota mensuel, headers `X-RateLimit-*`, `429 rate_limited`, `402 payment_required`
 - Collecteurs : `CERT-FR` (avis officiels ANSSI), `CISA KEV` (vulnérabilités activement exploitées), `ransomware.live` (revendications de victimes ransomware)
 - Cron de purge 30 jours implémenté (`purge_expired`)
 - Voir `api/README.md`

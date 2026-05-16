@@ -57,6 +57,12 @@ pytest
 de clés — `live`, `test`, `readonly` (les clés `readonly` ne peuvent pas muter).
 Le secret est haché en Argon2id, jamais stocké en clair.
 
+**Rate limiting** : chaque tier (`community` / `pro` / `enterprise`) a un débit
+par minute et un quota mensuel (cf. CLAUDE.md §5). Les réponses portent les
+headers `X-RateLimit-Limit/-Remaining/-Reset` ; un dépassement de débit renvoie
+`429 rate_limited` (+ `Retry-After`), un quota mensuel épuisé `402 payment_required`.
+Les clés `test` ne consomment pas le quota mensuel.
+
 **KYB** : un monitor `domain` reste `verifying` jusqu'à ce qu'un quorum de
 résolveurs DNS voie l'enregistrement `leakx-verification=<token>`. Un monitor
 `email` doit relever d'un domaine déjà vérifié. La recherche hors périmètre

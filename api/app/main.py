@@ -4,8 +4,8 @@ Les réponses suivent l'enveloppe standard décrite dans CLAUDE.md §6 :
     succès -> {"data": ..., "meta": {"request_id", "duration_ms"}}
     erreur -> {"error": {"code", "message", "request_id"}}
 
-Toutes les routes `/v1` sont authentifiées par clé API (Bearer token), sauf
-`/v1/sources` (registre public, transparence) et `/health`.
+Toutes les routes `/v1` sont authentifiées par clé API (Bearer token) et
+soumises au rate limiting, sauf `/v1/sources` (registre public) et `/health`.
 """
 from __future__ import annotations
 
@@ -23,7 +23,8 @@ from sqlmodel import Session, select
 from .auth import KEY_TYPES, generate_api_key, hash_secret, parse_token, verify_secret
 from .db import engine, get_session, init_db
 from .kyb import expected_txt_record, is_in_scope, new_verification_token, verify_domain
-from .models import ApiKey, Leak, Monitor, Source
+from .models import ApiKey, Leak, Monitor, Org, Source
+from .ratelimit import TIERS, consume_token, current_usage, increment_usage
 from .schemas import ApiKeyCreate, MonitorCreate, SearchRequest
 from .util import new_id, utcnow
 
@@ -43,10 +44,17 @@ app = FastAPI(title="LeakX API", version="0.1.0", lifespan=lifespan)
 # Gestion d'erreurs : format d'erreur métier de CLAUDE.md §6.
 # --------------------------------------------------------------------------
 class LeakXError(Exception):
-    def __init__(self, status: int, code: str, message: str) -> None:
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        message: str,
+        headers: Optional[dict] = None,
+    ) -> None:
         self.status = status
         self.code = code
         self.message = message
+        self.headers = headers or {}
 
 
 @app.exception_handler(LeakXError)
@@ -54,6 +62,7 @@ async def _leakx_error_handler(request: Request, exc: LeakXError) -> JSONRespons
     return JSONResponse(
         status_code=exc.status,
         content={"error": {"code": exc.code, "message": exc.message, "request_id": new_id("req")}},
+        headers=exc.headers or None,
     )
 
 
@@ -129,8 +138,47 @@ def require_auth(
     return AuthContext(org_id=api_key.org_id, key_id=api_key.id, key_type=api_key.type)
 
 
-def require_write(auth: AuthContext = Depends(require_auth)) -> AuthContext:
-    """Refuse les clés en lecture seule sur les routes de mutation."""
+def rate_limited(
+    response: Response,
+    auth: AuthContext = Depends(require_auth),
+    session: Session = Depends(get_session),
+) -> AuthContext:
+    """Applique le débit par minute et le quota mensuel du tier (CLAUDE.md §5)."""
+    org = session.get(Org, auth.org_id)
+    tier = TIERS.get(org.plan if org else "community", TIERS["community"])
+
+    if tier.rpm is not None:
+        rpm = consume_token(auth.key_id, tier)
+        headers = {
+            "X-RateLimit-Limit": str(tier.rpm),
+            "X-RateLimit-Remaining": str(max(0, rpm.remaining)),
+            "X-RateLimit-Reset": str(rpm.reset),
+        }
+        for name, value in headers.items():
+            response.headers[name] = value
+        if not rpm.allowed:
+            raise LeakXError(
+                429,
+                "rate_limited",
+                "Limite de requêtes par minute atteinte.",
+                headers={**headers, "Retry-After": str(rpm.retry_after)},
+            )
+
+    # Le quota mensuel ne s'applique pas aux clés de test (sandbox gratuite).
+    if tier.monthly_quota is not None and auth.key_type != "test":
+        if current_usage(session, auth.org_id) >= tier.monthly_quota:
+            raise LeakXError(
+                402,
+                "payment_required",
+                "Quota mensuel dépassé. Passez à un plan supérieur pour continuer.",
+            )
+        increment_usage(session, auth.org_id)
+
+    return auth
+
+
+def rate_limited_write(auth: AuthContext = Depends(rate_limited)) -> AuthContext:
+    """Comme `rate_limited`, mais refuse les clés en lecture seule."""
     if auth.key_type == "readonly":
         raise LeakXError(403, "forbidden", "Cette clé est en lecture seule (lkx_readonly_).")
     return auth
@@ -178,7 +226,7 @@ def list_leaks(
     offset: int = 0,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(rate_limited),
 ) -> dict:
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
@@ -207,7 +255,7 @@ def get_leak(
     leak_id: str,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(rate_limited),
 ) -> dict:
     leak = session.get(Leak, leak_id)
     if leak is None:
@@ -221,16 +269,14 @@ def search(
     body: SearchRequest,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(rate_limited),
 ) -> dict:
     value = body.value.strip()
     if not value:
         raise LeakXError(422, "validation_error", "Le champ `value` ne peut pas être vide.")
 
     # KYB : la recherche est limitée au périmètre vérifié de l'organisation.
-    monitors = session.exec(
-        select(Monitor).where(Monitor.org_id == auth.org_id)
-    ).all()
+    monitors = session.exec(select(Monitor).where(Monitor.org_id == auth.org_id)).all()
     if not is_in_scope(monitors, (body.type or "").lower(), value):
         raise LeakXError(
             403,
@@ -268,7 +314,7 @@ def create_monitor(
     body: MonitorCreate,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_write),
+    auth: AuthContext = Depends(rate_limited_write),
 ) -> dict:
     monitor_type = body.type.strip().lower()
     if monitor_type not in MONITOR_TYPES:
@@ -335,7 +381,7 @@ def list_monitors(
     type_filter: Optional[str] = Query(default=None, alias="type"),
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(rate_limited),
 ) -> dict:
     query = select(Monitor).where(Monitor.org_id == auth.org_id)
     if status:
@@ -351,7 +397,7 @@ def get_monitor(
     monitor_id: str,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(rate_limited),
 ) -> dict:
     monitor = session.get(Monitor, monitor_id)
     if monitor is None or monitor.org_id != auth.org_id:
@@ -364,7 +410,7 @@ def verify_monitor(
     monitor_id: str,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_write),
+    auth: AuthContext = Depends(rate_limited_write),
 ) -> dict:
     monitor = session.get(Monitor, monitor_id)
     if monitor is None or monitor.org_id != auth.org_id:
@@ -388,7 +434,7 @@ def verify_monitor(
 def delete_monitor(
     monitor_id: str,
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_write),
+    auth: AuthContext = Depends(rate_limited_write),
 ) -> Response:
     monitor = session.get(Monitor, monitor_id)
     if monitor is None or monitor.org_id != auth.org_id:
@@ -405,7 +451,7 @@ def delete_monitor(
 def list_keys(
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(rate_limited),
 ) -> dict:
     keys = session.exec(
         select(ApiKey).where(ApiKey.org_id == auth.org_id).order_by(ApiKey.created_at.desc())
@@ -418,7 +464,7 @@ def create_key(
     body: ApiKeyCreate,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_write),
+    auth: AuthContext = Depends(rate_limited_write),
 ) -> dict:
     key_type = body.type.strip().lower()
     if key_type not in KEY_TYPES:
@@ -451,7 +497,7 @@ def revoke_key(
     key_id: str,
     ctx: Ctx = Depends(get_ctx),
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_write),
+    auth: AuthContext = Depends(rate_limited_write),
 ) -> dict:
     api_key = session.get(ApiKey, key_id)
     if api_key is None or api_key.org_id != auth.org_id:
