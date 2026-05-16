@@ -48,7 +48,15 @@ Le repo contient un **prototype haute-fidélité React+HTML** (pas encore Next.j
 - React 18 chargé en CDN + JSX inline via `@babel/standalone`
 - Pas de bundler, pas de TypeScript
 - CSS vanilla avec variables CSS (design tokens)
-- Aucun backend, toutes les données sont mockées dans `src/**/data.jsx`
+- Le frontend et la direction artistique sont figés (faits par Claude Design) — **ne pas y toucher**, on travaille le fond
+
+### Backend (`api/`) — amorcé
+- FastAPI + SQLModel (Pydantic v2), SQLite en dev / PostgreSQL en prod
+- Modèle de données **provenance-first** : `source_id` + `source_ref` obligatoires sur chaque observation
+- Endpoints de lecture branchés sur de vraies données : `/v1/sources`, `/v1/leaks`, `/v1/leaks/:id`, `/v1/search`
+- 1er collecteur : `ransomware.live` (revendications publiques de victimes ransomware)
+- Cron de purge 30 jours implémenté (`purge_expired`)
+- Voir `api/README.md`
 
 ### **À faire** côté design (optionnel, peuvent attendre)
 - [ ] Page **404** dédiée
@@ -467,6 +475,11 @@ Ces étapes sont **obligatoires** avant le 1er client payant :
 | **Bearer token, pas OAuth** | Simplicité + pas de besoin de scopes utilisateur (juste org-level) |
 | **API REST, pas GraphQL** | Simplicité d'intégration SIEM/SOAR, écosystème curl/Postman/SDKs plus mature |
 | **Pas de white-label** au lancement | Garder le focus produit. Reconsidérer après 50 clients Pro. |
+| **Doctrine de collecte : sources publiques gratuites + API de fournisseurs légitimes uniquement** | Zéro achat de données à des acteurs criminels (recel, art. 321-1 CP). Préserve la base légale RGPD et la marque. |
+| **Positionnement « information officielle, sourcée, vérifiable »** | Chaque observation cite sa source (`source_ref`). Différencie du CTI « trust us » non sourcé. Marque de fabrique du projet. |
+| **Pilier « Dark web » rétrogradé** | Pas d'auto-scraping de forums criminels (risque légal + non « officiel »). Devient une couche d'enrichissement attribuée, via flux partenaire si besoin. |
+| **Backend solo : FastAPI + PostgreSQL seul au lancement** | Pas d'OpenSearch / NATS / K8s tant que le volume ne le force pas. Réduit le burn pré-revenu. |
+| **Modèle de données « provenance-first »** | `source_id` + `source_ref` obligatoires. Si une donnée n'est pas citable, elle n'est pas stockée. |
 
 ---
 

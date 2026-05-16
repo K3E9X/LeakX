@@ -1,0 +1,53 @@
+# LeakX API
+
+Backend de la plateforme LeakX. Conçu autour d'une règle unique : **aucune
+observation n'est stockée sans source citable** (`source_id` + `source_ref`).
+C'est la marque de fabrique du projet — information officielle et vérifiable.
+
+## Stack
+
+- FastAPI + SQLModel (Pydantic v2)
+- SQLite en développement, PostgreSQL en production (`LEAKX_DATABASE_URL`)
+
+## Démarrage
+
+```sh
+cd api
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Lancer l'API
+uvicorn app.main:app --reload
+
+# Lancer les collecteurs (récupère les sources réelles)
+python scripts/run_collectors.py
+
+# Hors-ligne : rejouer une réponse locale
+python scripts/run_collectors.py --fixture tests/fixtures/ransomware_live_sample.json
+
+# Tests
+pytest
+```
+
+## Endpoints
+
+| Méthode | Chemin | Description |
+|---|---|---|
+| `GET`  | `/health` | Sonde de vie |
+| `GET`  | `/v1/sources` | Registre public des sources |
+| `GET`  | `/v1/leaks` | Observations (filtres `category`, `severity`, pagination) |
+| `GET`  | `/v1/leaks/{id}` | Détail d'une observation + sa source |
+| `POST` | `/v1/search` | Recherche par entité |
+
+Les réponses suivent l'enveloppe standard `{"data", "meta"}` / `{"error"}`
+décrite dans `CLAUDE.md §6`.
+
+## Collecteurs
+
+Chaque source est un `Collector` (`app/sources/`). Le premier branché est
+`ransomware.live` (revendications publiques de victimes ransomware). Pour en
+ajouter un : créer la classe, l'enregistrer dans `app/sources/__init__.py`.
+
+> La collecte réelle nécessite un accès réseau sortant. Les environnements
+> d'exécution restreints peuvent bloquer les appels — utiliser alors
+> `--fixture` pour valider la chaîne de traitement de bout en bout.
