@@ -67,3 +67,23 @@ def verify_domain(domain: str, token: str, lookup: TxtLookup | None = None) -> b
         if any(expected in record for record in resolve(domain, resolver_ip))
     )
     return seen >= settings.kyb_min_resolvers
+
+
+def is_in_scope(monitors: list, search_type: str, value: str) -> bool:
+    """Vrai si `value` relève du périmètre vérifié de l'organisation.
+
+    `monitors` est la liste des monitors de l'organisation. Une recherche n'est
+    autorisée que sur une entité couverte par un monitor actif (ou un
+    sous-domaine d'un domaine vérifié) — cf. `403 outside_scope`, CLAUDE.md §5.
+    """
+    value = value.strip().lower()
+    active = [m for m in monitors if m.status == "active"]
+    verified_domains = {m.value for m in active if m.type == "domain"}
+
+    if any(m.value == value for m in active):
+        return True
+    if any(value == d or value.endswith("." + d) for d in verified_domains):
+        return True
+    if "@" in value and value.rsplit("@", 1)[-1] in verified_domains:
+        return True
+    return False

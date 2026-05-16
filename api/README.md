@@ -16,6 +16,9 @@ cd api
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
+# Créer une organisation + sa première clé API (affichée une seule fois)
+python scripts/bootstrap_org.py --name "Mon organisation"
+
 # Lancer l'API
 uvicorn app.main:app --reload
 
@@ -33,22 +36,30 @@ pytest
 
 ## Endpoints
 
-| Méthode | Chemin | Description |
-|---|---|---|
-| `GET`    | `/health` | Sonde de vie |
-| `GET`    | `/v1/sources` | Registre public des sources |
-| `GET`    | `/v1/leaks` | Observations (filtres `category`, `severity`, pagination) |
-| `GET`    | `/v1/leaks/{id}` | Détail d'une observation + sa source |
-| `POST`   | `/v1/search` | Recherche par entité |
-| `POST`   | `/v1/monitors` | Créer un monitor (domaine → vérification DNS TXT) |
-| `GET`    | `/v1/monitors` | Lister les monitors (filtres `org_id`, `type`, `status`) |
-| `GET`    | `/v1/monitors/{id}` | Détail d'un monitor |
-| `POST`   | `/v1/monitors/{id}/verify` | Lancer la vérification DNS TXT d'un domaine |
-| `DELETE` | `/v1/monitors/{id}` | Supprimer un monitor |
+| Méthode | Chemin | Auth | Description |
+|---|---|---|---|
+| `GET`    | `/health` | — | Sonde de vie |
+| `GET`    | `/v1/sources` | — | Registre public des sources |
+| `GET`    | `/v1/leaks` | clé | Observations (filtres `category`, `severity`, pagination) |
+| `GET`    | `/v1/leaks/{id}` | clé | Détail d'une observation + sa source |
+| `POST`   | `/v1/search` | clé | Recherche par entité (limitée au périmètre vérifié) |
+| `POST`   | `/v1/monitors` | clé écriture | Créer un monitor (domaine → vérification DNS TXT) |
+| `GET`    | `/v1/monitors` | clé | Lister ses monitors (filtres `type`, `status`) |
+| `GET`    | `/v1/monitors/{id}` | clé | Détail d'un monitor |
+| `POST`   | `/v1/monitors/{id}/verify` | clé écriture | Lancer la vérification DNS TXT |
+| `DELETE` | `/v1/monitors/{id}` | clé écriture | Supprimer un monitor |
+| `GET`    | `/v1/keys` | clé | Lister ses clés API |
+| `POST`   | `/v1/keys` | clé écriture | Générer une clé (token affiché une seule fois) |
+| `DELETE` | `/v1/keys/{id}` | clé écriture | Révoquer une clé |
+
+**Authentification** : header `Authorization: Bearer lkx_<type>_…`. Trois types
+de clés — `live`, `test`, `readonly` (les clés `readonly` ne peuvent pas muter).
+Le secret est haché en Argon2id, jamais stocké en clair.
 
 **KYB** : un monitor `domain` reste `verifying` jusqu'à ce qu'un quorum de
 résolveurs DNS voie l'enregistrement `leakx-verification=<token>`. Un monitor
-`email` doit relever d'un domaine déjà vérifié. C'est le garde-fou anti-doxxing.
+`email` doit relever d'un domaine déjà vérifié. La recherche hors périmètre
+vérifié est rejetée (`403 outside_scope`). C'est le garde-fou anti-doxxing.
 
 Les réponses suivent l'enveloppe standard `{"data", "meta"}` / `{"error"}`
 décrite dans `CLAUDE.md §6`.

@@ -79,3 +79,26 @@ class Monitor(SQLModel, table=True):
     verification_token: Optional[str] = None
     verified_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class Org(SQLModel, table=True):
+    """Une organisation cliente. Tout monitor et toute clé API lui sont rattachés."""
+
+    id: str = Field(default_factory=lambda: new_id("org"), primary_key=True)
+    name: str
+    plan: str = "community"  # community | pro | enterprise
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ApiKey(SQLModel, table=True):
+    """Clé API d'une organisation. Le secret n'est jamais stocké en clair."""
+
+    id: str = Field(default_factory=lambda: new_id("key"), primary_key=True)
+    org_id: str = Field(foreign_key="org.id", index=True)
+    public_id: str = Field(index=True, unique=True)  # partie non secrète de la clé
+    type: str  # live | test | readonly
+    secret_hash: str  # Argon2id — jamais en clair après création
+    label: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+    last_used_at: Optional[datetime] = None
+    revoked_at: Optional[datetime] = None
