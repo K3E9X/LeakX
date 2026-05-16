@@ -2,10 +2,13 @@
 
 Usage :
     python scripts/run_collectors.py
-    python scripts/run_collectors.py --fixture tests/fixtures/ransomware_live_sample.json
+    python scripts/run_collectors.py \\
+        --fixture cert_fr=tests/fixtures/cert_fr_sample.xml \\
+        --fixture ransomware_live=tests/fixtures/ransomware_live_sample.json
 
-L'option `--fixture` rejoue une réponse JSON locale (utile hors-ligne, ou quand
-la politique réseau de l'environnement bloque les appels sortants).
+`--fixture ID=CHEMIN` (répétable) rejoue une réponse locale pour le collecteur
+`ID` — utile hors-ligne, ou quand la politique réseau bloque les appels
+sortants. Les collecteurs sans fixture déclenchent un appel réseau réel.
 """
 from __future__ import annotations
 
@@ -24,14 +27,31 @@ from app.sources import ALL_COLLECTORS  # noqa: E402
 from app.sources.base import dedup_hash  # noqa: E402
 
 
+def _load_fixtures(specs: list[str], parser: argparse.ArgumentParser) -> dict[str, object]:
+    fixtures: dict[str, object] = {}
+    for spec in specs:
+        collector_id, sep, path = spec.partition("=")
+        if not sep or not path:
+            parser.error(f"--fixture attend le format ID=CHEMIN (reçu : {spec!r})")
+        raw = pathlib.Path(path).read_text("utf-8")
+        try:
+            fixtures[collector_id] = json.loads(raw)  # réponse API JSON
+        except json.JSONDecodeError:
+            fixtures[collector_id] = raw  # flux RSS / texte brut
+    return fixtures
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collecteurs LeakX")
-    parser.add_argument("--fixture", help="Chemin d'une réponse JSON locale à rejouer")
+    parser.add_argument(
+        "--fixture",
+        action="append",
+        default=[],
+        metavar="ID=CHEMIN",
+        help="Rejoue une réponse locale pour un collecteur donné (répétable).",
+    )
     args = parser.parse_args()
-
-    fixture_payload = None
-    if args.fixture:
-        fixture_payload = json.loads(pathlib.Path(args.fixture).read_text("utf-8"))
+    fixtures = _load_fixtures(args.fixture, parser)
 
     init_db()
     inserted = skipped = 0
@@ -42,7 +62,7 @@ def main() -> None:
         for collector_cls in ALL_COLLECTORS:
             collector = collector_cls()
             session.merge(collector.source)  # upsert du registre des sources
-            findings = collector.collect(payload=fixture_payload)
+            findings = collector.collect(payload=fixtures.get(collector.source.id))
 
             for finding in findings:
                 digest = dedup_hash(collector.source.id, finding)

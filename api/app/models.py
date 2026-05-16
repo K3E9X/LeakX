@@ -39,7 +39,7 @@ class Leak(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: new_id("lk"), primary_key=True)
 
-    category: str  # ransom | stealer | dark | combo | paste | brand | telegram | vuln
+    category: str  # ransom | stealer | dark | combo | paste | brand | telegram | vuln | cti
     title: str
     severity: str = "med"  # high | med | low
     status: str = "open"  # open | progress | resolved

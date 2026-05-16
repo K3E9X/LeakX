@@ -22,8 +22,10 @@ uvicorn app.main:app --reload
 # Lancer les collecteurs (récupère les sources réelles)
 python scripts/run_collectors.py
 
-# Hors-ligne : rejouer une réponse locale
-python scripts/run_collectors.py --fixture tests/fixtures/ransomware_live_sample.json
+# Hors-ligne : rejouer des réponses locales (ID=CHEMIN, répétable)
+python scripts/run_collectors.py \
+  --fixture cert_fr=tests/fixtures/cert_fr_sample.xml \
+  --fixture ransomware_live=tests/fixtures/ransomware_live_sample.json
 
 # Tests
 pytest
@@ -44,9 +46,12 @@ décrite dans `CLAUDE.md §6`.
 
 ## Collecteurs
 
-Chaque source est un `Collector` (`app/sources/`). Le premier branché est
-`ransomware.live` (revendications publiques de victimes ransomware). Pour en
-ajouter un : créer la classe, l'enregistrer dans `app/sources/__init__.py`.
+Chaque source est un `Collector` (`app/sources/`). Collecteurs branchés :
+
+- **CERT-FR** — avis, alertes et rapports CTI du CERT national (ANSSI), source officielle.
+- **ransomware.live** — revendications publiques de victimes ransomware.
+
+Pour en ajouter un : créer la classe, l'enregistrer dans `app/sources/__init__.py`.
 
 > La collecte réelle nécessite un accès réseau sortant. Les environnements
 > d'exécution restreints peuvent bloquer les appels — utiliser alors
