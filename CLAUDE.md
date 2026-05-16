@@ -125,7 +125,7 @@ leakx-platform/
 | Frontend | **Next.js 15** + App Router + Tailwind v4 | RSC pour SEO/perf, server actions pour mutations, écosystème |
 | Backend API | **Go (Fiber/Echo)** _ou_ **Python (FastAPI)** | Go pour perf/concurrence, FastAPI pour vélocité + écosystème ML |
 | DB métier | **PostgreSQL** (Scaleway Managed) | Standard, tooling, JSONB pour métadonnées |
-| Search | **OpenSearch** (Scaleway Managed) | Recherche full-text + agrégations sur les fuites |
+| Search / analytique | **PostgreSQL** (`tsvector` + `pg_trgm`) au lancement ; **ClickHouse** auto-hébergé Scaleway en montée en charge | Éviter d'opérer un 2ᵉ datastore en solo. ClickHouse ensuite : colonne, TTL natif = rétention 30 j, idéal ingestion massive. OpenSearch seulement si la recherche fuzzy devient un besoin produit. ClickHouse Cloud exclu (AWS/GCP → casse la souveraineté) |
 | Cache + queues | **Redis** + **NATS** | Cache, rate-limiting, pub/sub pour les alertes |
 | Object storage | **Scaleway Object Storage** (S3-compat) | Raw payloads, exports clients, conformité localisation |
 | Auth | **Clerk** ou **WorkOS** | SSO SAML/SCIM pour Entreprise sans réinventer |
@@ -386,6 +386,7 @@ Le panneau Tweaks (toolbar en haut à droite en mode dev) expose :
 Ces étapes sont **obligatoires** avant le 1er client payant :
 
 ### À faire J0–J30
+0. ☐ **Nom de domaine** — vérifier l'absence de marque déposée (recherche INPI) et la disponibilité, puis acheter `leakx.fr` (prioritaire) + `.com` en défensif, via un registrar FR (Scaleway Domains / OVH / Gandi). **Prérequis** à la vérification KYB DNS TXT, aux emails `dpo@`/`privacy@leakx.fr`, au TLS et au déploiement public. ~15 €/an.
 1. ☐ Avocat privacy — adapter templates CGU + Politique de confidentialité (Doctrine, LegalPlace, ~500€)
 2. ☐ Registre RGPD (template CNIL gratuit) — 1 journée à remplir
 3. ☐ DPO externe mutualisé — Dastra ou DPO-Consulting (~200€/mois)
@@ -480,6 +481,8 @@ Ces étapes sont **obligatoires** avant le 1er client payant :
 | **Pilier « Dark web » rétrogradé** | Pas d'auto-scraping de forums criminels (risque légal + non « officiel »). Devient une couche d'enrichissement attribuée, via flux partenaire si besoin. |
 | **Backend solo : FastAPI + PostgreSQL seul au lancement** | Pas d'OpenSearch / NATS / K8s tant que le volume ne le force pas. Réduit le burn pré-revenu. |
 | **Modèle de données « provenance-first »** | `source_id` + `source_ref` obligatoires. Si une donnée n'est pas citable, elle n'est pas stockée. |
+| **Base : PostgreSQL seul au lancement ; ClickHouse en montée en charge (pas OpenSearch)** | Postgres `pg_trgm` couvre la recherche scopée par KYB. ClickHouse ensuite : TTL natif = rétention, colonne = compression + ingestion massive, auto-hébergé Scaleway pour la souveraineté. |
+| **Domaine `leakx.fr` acheté en Étape 0 (immédiat)** | Prérequis technique (KYB DNS, emails, TLS) et défensif. Registrar FR. Vérifier la marque (INPI) avant achat. |
 
 ---
 
