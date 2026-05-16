@@ -53,8 +53,8 @@ Le repo contient un **prototype haute-fidélité React+HTML** (pas encore Next.j
 ### Backend (`api/`) — amorcé
 - FastAPI + SQLModel (Pydantic v2), SQLite en dev / PostgreSQL en prod
 - Modèle de données **provenance-first** : `source_id` + `source_ref` obligatoires sur chaque observation
-- Endpoints de lecture branchés sur de vraies données : `/v1/sources`, `/v1/leaks`, `/v1/leaks/:id`, `/v1/search`
-- 1er collecteur : `ransomware.live` (revendications publiques de victimes ransomware)
+- Endpoints branchés sur de vraies données : lecture (`/v1/sources`, `/v1/leaks`, `/v1/search`) + KYB (`/v1/monitors` + vérification de domaine par DNS TXT)
+- Collecteurs : `CERT-FR` (avis officiels ANSSI), `ransomware.live` (revendications de victimes ransomware)
 - Cron de purge 30 jours implémenté (`purge_expired`)
 - Voir `api/README.md`
 

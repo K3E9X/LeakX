@@ -39,7 +39,7 @@ class Leak(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: new_id("lk"), primary_key=True)
 
-    category: str  # ransom | stealer | dark | combo | paste | brand | telegram | vuln
+    category: str  # ransom | stealer | dark | combo | paste | brand | telegram | vuln | cti
     title: str
     severity: str = "med"  # high | med | low
     status: str = "open"  # open | progress | resolved
@@ -60,3 +60,22 @@ class Leak(SQLModel, table=True):
     dedup_hash: str = Field(index=True)
 
     raw: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+
+
+class Monitor(SQLModel, table=True):
+    """Une entité du périmètre de surveillance d'une organisation.
+
+    KYB (cf. CLAUDE.md §5) : un monitor `domain` n'est actif qu'après
+    vérification DNS TXT ; un monitor `email` doit relever d'un domaine déjà
+    vérifié ; les autres types passent par une validation manuelle.
+    """
+
+    id: str = Field(default_factory=lambda: new_id("mon"), primary_key=True)
+    org_id: str = Field(index=True)  # renseigné par l'authentification (à venir)
+    type: str  # domain | email | ip | vip | brand | repo
+    value: str
+    status: str = "verifying"  # verifying | active | paused
+    verification_method: Optional[str] = None  # dns_txt | domain_inherited | manual
+    verification_token: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=utcnow, index=True)
