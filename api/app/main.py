@@ -10,16 +10,19 @@ import time
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlmodel import Session, select
 
 from .db import engine, get_session, init_db
-from .models import Leak, Source
-from .schemas import SearchRequest
-from .util import new_id
+from .kyb import expected_txt_record, new_verification_token, verify_domain
+from .models import Leak, Monitor, Source
+from .schemas import MonitorCreate, SearchRequest
+from .util import new_id, utcnow
+
+MONITOR_TYPES = {"domain", "email", "ip", "vip", "brand", "repo"}
 
 
 @asynccontextmanager
@@ -175,3 +178,140 @@ def search(
         },
         ctx,
     )
+
+
+# --------------------------------------------------------------------------
+# Monitors & KYB — un domaine ne devient surveillable qu'après preuve de
+# contrôle (vérification DNS TXT). Garde-fou anti-doxxing, cf. CLAUDE.md §5.
+# --------------------------------------------------------------------------
+@app.post("/v1/monitors", status_code=201)
+def create_monitor(
+    body: MonitorCreate,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+) -> dict:
+    monitor_type = body.type.strip().lower()
+    if monitor_type not in MONITOR_TYPES:
+        raise LeakXError(422, "validation_error", f"Type de monitor inconnu : {body.type!r}.")
+    value = body.value.strip().lower()
+    if not value:
+        raise LeakXError(422, "validation_error", "Le champ `value` est requis.")
+
+    monitor = Monitor(org_id=body.org_id, type=monitor_type, value=value)
+
+    if monitor_type == "domain":
+        # KYB : preuve de contrôle exigée avant activation.
+        monitor.verification_method = "dns_txt"
+        monitor.verification_token = new_verification_token()
+        monitor.status = "verifying"
+    elif monitor_type == "email":
+        # Doit relever d'un domaine déjà vérifié par la même organisation.
+        domain = value.rsplit("@", 1)[-1] if "@" in value else ""
+        verified_domain = session.exec(
+            select(Monitor).where(
+                Monitor.org_id == body.org_id,
+                Monitor.type == "domain",
+                Monitor.value == domain,
+                Monitor.status == "active",
+            )
+        ).first()
+        if verified_domain is None:
+            raise LeakXError(
+                422,
+                "validation_error",
+                f"Un monitor `email` doit relever d'un domaine déjà vérifié "
+                f"(domaine attendu : {domain or '—'}).",
+            )
+        monitor.verification_method = "domain_inherited"
+        monitor.status = "active"
+        monitor.verified_at = utcnow()
+    else:
+        # ip / vip / brand / repo : validation manuelle par l'équipe LeakX.
+        monitor.verification_method = "manual"
+        monitor.status = "verifying"
+
+    session.add(monitor)
+    session.commit()
+    session.refresh(monitor)
+
+    data: dict = {"monitor": monitor}
+    if monitor.verification_method == "dns_txt":
+        data["verification"] = {
+            "method": "dns_txt",
+            "record_name": monitor.value,
+            "record_type": "TXT",
+            "record_value": expected_txt_record(monitor.verification_token),
+            "instructions": (
+                "Publiez cet enregistrement TXT dans la zone DNS du domaine, "
+                "puis appelez POST /v1/monitors/{id}/verify."
+            ),
+        }
+    return envelope(data, ctx)
+
+
+@app.get("/v1/monitors")
+def list_monitors(
+    org_id: Optional[str] = None,
+    status: Optional[str] = None,
+    type_filter: Optional[str] = Query(default=None, alias="type"),
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+) -> dict:
+    query = select(Monitor)
+    if org_id:
+        query = query.where(Monitor.org_id == org_id)
+    if status:
+        query = query.where(Monitor.status == status)
+    if type_filter:
+        query = query.where(Monitor.type == type_filter)
+    monitors = session.exec(query.order_by(Monitor.created_at.desc())).all()
+    return envelope({"monitors": monitors}, ctx)
+
+
+@app.get("/v1/monitors/{monitor_id}")
+def get_monitor(
+    monitor_id: str,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+) -> dict:
+    monitor = session.get(Monitor, monitor_id)
+    if monitor is None:
+        raise LeakXError(404, "not_found", f"Aucun monitor avec l'identifiant {monitor_id}.")
+    return envelope({"monitor": monitor}, ctx)
+
+
+@app.post("/v1/monitors/{monitor_id}/verify")
+def verify_monitor(
+    monitor_id: str,
+    ctx: Ctx = Depends(get_ctx),
+    session: Session = Depends(get_session),
+) -> dict:
+    monitor = session.get(Monitor, monitor_id)
+    if monitor is None:
+        raise LeakXError(404, "not_found", f"Aucun monitor avec l'identifiant {monitor_id}.")
+    if monitor.verification_method != "dns_txt" or not monitor.verification_token:
+        raise LeakXError(422, "validation_error", "Ce monitor ne se vérifie pas par DNS TXT.")
+    if monitor.status == "active":
+        return envelope({"monitor": monitor, "verified": True}, ctx)
+
+    verified = verify_domain(monitor.value, monitor.verification_token)
+    if verified:
+        monitor.status = "active"
+        monitor.verified_at = utcnow()
+        session.add(monitor)
+        session.commit()
+        session.refresh(monitor)
+    return envelope({"monitor": monitor, "verified": verified}, ctx)
+
+
+@app.delete("/v1/monitors/{monitor_id}", status_code=204)
+def delete_monitor(
+    monitor_id: str,
+    session: Session = Depends(get_session),
+) -> Response:
+    monitor = session.get(Monitor, monitor_id)
+    if monitor is None:
+        raise LeakXError(404, "not_found", f"Aucun monitor avec l'identifiant {monitor_id}.")
+    session.delete(monitor)
+    session.commit()
+    return Response(status_code=204)

@@ -27,3 +27,12 @@ class SearchRequest(BaseModel):
 
     type: Optional[str] = None
     value: str
+
+
+class MonitorCreate(BaseModel):
+    """Corps de `POST /v1/monitors`."""
+
+    type: str
+    value: str
+    # Placeholder tant que l'authentification n'est pas en place.
+    org_id: str = "org_dev"

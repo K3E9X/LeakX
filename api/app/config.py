@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     retention_days: int = 30
     http_timeout: float = 20.0
     user_agent: str = "LeakX-collector/0.1 (+https://leakx.fr)"
+    # KYB : nombre de résolveurs DNS devant voir l'enregistrement de vérification.
+    kyb_min_resolvers: int = 2
 
 
 settings = Settings()
