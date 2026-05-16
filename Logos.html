@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LeakX — Logo Variants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" />
+<style>
+:root {
+  --bg: #07090f;
+  --surface: #0f1320;
+  --surface-2: #131829;
+  --border: #1f2638;
+  --border-strong: #2a3450;
+  --text: #e6e9f2;
+  --text-mute: #8a93a6;
+  --text-faint: #5b6477;
+  --violet: #9658f7;
+  --violet-hi: #a875ff;
+  --title-blue: #588df7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 48px 32px 80px;
+  background:
+    radial-gradient(900px 500px at 50% -100px, rgba(150, 88, 247, 0.18), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Manrope', system-ui, sans-serif;
+  min-height: 100vh;
+}
+header { max-width: 1280px; margin: 0 auto 48px; }
+h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 36px; font-weight: 600; margin: 0 0 8px;
+  color: var(--title-blue); letter-spacing: -0.02em;
+}
+header p { color: var(--text-mute); margin: 0; font-size: 15px; }
+
+.grid {
+  max-width: 1280px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px;
+}
+@media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+.card .big {
+  width: 120px; height: 120px;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset, 0 12px 30px -10px rgba(150, 88, 247, 0.45);
+}
+.card .big svg { width: 100%; height: 100%; display: block; }
+.card-meta { min-width: 0; }
+.card-meta .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--violet-hi);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(150, 88, 247, 0.12); border: 1px solid rgba(150, 88, 247, 0.3);
+  padding: 3px 9px; border-radius: 999px;
+  display: inline-block; margin-bottom: 12px;
+}
+.card-meta h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 20px; font-weight: 600; margin: 0 0 8px;
+  letter-spacing: -0.015em;
+}
+.card-meta p {
+  color: var(--text-mute); font-size: 13.5px;
+  line-height: 1.55; margin: 0 0 18px;
+}
+.previews {
+  display: flex; align-items: center; gap: 18px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+}
+.preview-mark {
+  border-radius: 8px; overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset;
+  flex-shrink: 0;
+}
+.preview-mark.lg { width: 40px; height: 40px; border-radius: 10px; }
+.preview-mark.md { width: 28px; height: 28px; border-radius: 8px; }
+.preview-mark.sm { width: 16px; height: 16px; border-radius: 4px; }
+.preview-mark svg { width: 100%; height: 100%; display: block; }
+.brand-lockup {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700; font-size: 18px; letter-spacing: -0.01em;
+}
+.brand-lockup .brand-x { color: var(--violet-hi); }
+.size-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-faint);
+  margin-left: auto;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Logo LeakX — directions à explorer</h1>
+  <p>5 directions distinctes. Chacune montre le logo en grand format, puis aux tailles d'usage (40px, 28px, 16px) avec le brand lockup.</p>
+</header>
+
+<div class="grid">
+
+<!-- ============================================================ -->
+<!-- A: L bracket framing X (current) -->
+<!-- ============================================================ -->
+<div class="card">
+  <div class="big">
+    <svg viewBox="0 0 32 32">
+      <defs>
+        <linearGradient id="A-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a875ff"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="url(#A-grad)"/>
+      <path d="M6 6 H10 V22 H26 V26 H6 Z" fill="#fff"/>
+      <path d="M13 7 L15.5 7 L25 21 L22.5 21 Z" fill="#fff"/>
+      <path d="M22.5 7 L25 7 L15.5 21 L13 21 Z" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="card-meta">
+    <span class="label">Option A · actuel</span>
+    <h3>L-bracket framing X</h3>
+    <p>Le L sert de cadre architectural, le X s'imbrique à l'intérieur. Bauhaus / monogramme. Très lisible aux petites tailles.</p>
+    <div class="previews">
+      <span class="preview-mark lg"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#A-grad)"/><path d="M6 6 H10 V22 H26 V26 H6 Z" fill="#fff"/><path d="M13 7 L15.5 7 L25 21 L22.5 21 Z" fill="#fff"/><path d="M22.5 7 L25 7 L15.5 21 L13 21 Z" fill="#fff"/></svg></span>
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#A-grad)"/><path d="M6 6 H10 V22 H26 V26 H6 Z" fill="#fff"/><path d="M13 7 L15.5 7 L25 21 L22.5 21 Z" fill="#fff"/><path d="M22.5 7 L25 7 L15.5 21 L13 21 Z" fill="#fff"/></svg></span>
+      <span class="preview-mark sm"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#A-grad)"/><path d="M6 6 H10 V22 H26 V26 H6 Z" fill="#fff"/><path d="M13 7 L15.5 7 L25 21 L22.5 21 Z" fill="#fff"/><path d="M22.5 7 L25 7 L15.5 21 L13 21 Z" fill="#fff"/></svg></span>
+      <span class="size-label">40 / 28 / 16 px</span>
+    </div>
+    <div class="brand-lockup" style="margin-top:14px;">
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#A-grad)"/><path d="M6 6 H10 V22 H26 V26 H6 Z" fill="#fff"/><path d="M13 7 L15.5 7 L25 21 L22.5 21 Z" fill="#fff"/><path d="M22.5 7 L25 7 L15.5 21 L13 21 Z" fill="#fff"/></svg></span>
+      <span>Leak<span class="brand-x">X</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- B: Negative space LX -->
+<!-- ============================================================ -->
+<div class="card">
+  <div class="big">
+    <svg viewBox="0 0 32 32">
+      <defs>
+        <linearGradient id="B-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a875ff"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="url(#B-grad)"/>
+      <path d="M9 8 H12 V21 H21 V24 H9 Z" fill="#0f1320"/>
+      <path d="M14 9 L17 9 L25 21 L22 21 Z" fill="#0f1320"/>
+      <path d="M22 9 L25 9 L17 21 L14 21 Z" fill="#0f1320"/>
+    </svg>
+  </div>
+  <div class="card-meta">
+    <span class="label">Option B</span>
+    <h3>Négatif intégral</h3>
+    <p>Carré violet plein dans lequel le L et le X sont découpés en négatif. Cyber, "data carved out" — évoque la fuite.</p>
+    <div class="previews">
+      <span class="preview-mark lg"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#B-grad)"/><path d="M9 8 H12 V21 H21 V24 H9 Z" fill="#0f1320"/><path d="M14 9 L17 9 L25 21 L22 21 Z" fill="#0f1320"/><path d="M22 9 L25 9 L17 21 L14 21 Z" fill="#0f1320"/></svg></span>
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#B-grad)"/><path d="M9 8 H12 V21 H21 V24 H9 Z" fill="#0f1320"/><path d="M14 9 L17 9 L25 21 L22 21 Z" fill="#0f1320"/><path d="M22 9 L25 9 L17 21 L14 21 Z" fill="#0f1320"/></svg></span>
+      <span class="preview-mark sm"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#B-grad)"/><path d="M9 8 H12 V21 H21 V24 H9 Z" fill="#0f1320"/><path d="M14 9 L17 9 L25 21 L22 21 Z" fill="#0f1320"/><path d="M22 9 L25 9 L17 21 L14 21 Z" fill="#0f1320"/></svg></span>
+      <span class="size-label">40 / 28 / 16 px</span>
+    </div>
+    <div class="brand-lockup" style="margin-top:14px;">
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#B-grad)"/><path d="M9 8 H12 V21 H21 V24 H9 Z" fill="#0f1320"/><path d="M14 9 L17 9 L25 21 L22 21 Z" fill="#0f1320"/><path d="M22 9 L25 9 L17 21 L14 21 Z" fill="#0f1320"/></svg></span>
+      <span>Leak<span class="brand-x">X</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- C: Single ribbon — continuous folded stroke -->
+<!-- ============================================================ -->
+<div class="card">
+  <div class="big">
+    <svg viewBox="0 0 32 32">
+      <defs>
+        <linearGradient id="C-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a875ff"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="url(#C-grad)"/>
+      <g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter">
+        <polyline points="23,7 11,18 11,25 26,25"/>
+        <line x1="11" y1="7" x2="23" y2="19"/>
+      </g>
+    </svg>
+  </div>
+  <div class="card-meta">
+    <span class="label">Option C</span>
+    <h3>Ruban plié</h3>
+    <p>Une polyline qui se plie deux fois : diagonale (X arm), puis verticale (spine L), puis horizontale (foot). Croisée par un second diagonal (X). Un seul geste continu.</p>
+    <div class="previews">
+      <span class="preview-mark lg"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#C-grad)"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"><polyline points="23,7 11,18 11,25 26,25"/><line x1="11" y1="7" x2="23" y2="19"/></g></svg></span>
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#C-grad)"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"><polyline points="23,7 11,18 11,25 26,25"/><line x1="11" y1="7" x2="23" y2="19"/></g></svg></span>
+      <span class="preview-mark sm"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#C-grad)"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"><polyline points="23,7 11,18 11,25 26,25"/><line x1="11" y1="7" x2="23" y2="19"/></g></svg></span>
+      <span class="size-label">40 / 28 / 16 px</span>
+    </div>
+    <div class="brand-lockup" style="margin-top:14px;">
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#C-grad)"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"><polyline points="23,7 11,18 11,25 26,25"/><line x1="11" y1="7" x2="23" y2="19"/></g></svg></span>
+      <span>Leak<span class="brand-x">X</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- D: Sliced L — bold L with diagonal slash -->
+<!-- ============================================================ -->
+<div class="card">
+  <div class="big">
+    <svg viewBox="0 0 32 32">
+      <defs>
+        <linearGradient id="D-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a875ff"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="url(#D-grad)"/>
+      <!-- Thick L -->
+      <path d="M7 6 H13 V20 H26 V26 H7 Z" fill="#fff"/>
+      <!-- Diagonal slash crossing the L (the X) -->
+      <path d="M23 4 L28 4 L13 30 L8 30 Z" fill="url(#D-grad)" opacity="0.95"/>
+      <path d="M23 4 L28 4 L13 30 L8 30 Z" fill="#fff" opacity="0.45"/>
+    </svg>
+  </div>
+  <div class="card-meta">
+    <span class="label">Option D</span>
+    <h3>L tranché</h3>
+    <p>Un L massif tranché par un slash diagonal — le X se lit comme une coupure. Métaphore directe de la fuite ("crossed out"). Bold, daring.</p>
+    <div class="previews">
+      <span class="preview-mark lg"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#D-grad)"/><path d="M7 6 H13 V20 H26 V26 H7 Z" fill="#fff"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="url(#D-grad)" opacity="0.95"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="#fff" opacity="0.45"/></svg></span>
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#D-grad)"/><path d="M7 6 H13 V20 H26 V26 H7 Z" fill="#fff"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="url(#D-grad)" opacity="0.95"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="#fff" opacity="0.45"/></svg></span>
+      <span class="preview-mark sm"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#D-grad)"/><path d="M7 6 H13 V20 H26 V26 H7 Z" fill="#fff"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="url(#D-grad)" opacity="0.95"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="#fff" opacity="0.45"/></svg></span>
+      <span class="size-label">40 / 28 / 16 px</span>
+    </div>
+    <div class="brand-lockup" style="margin-top:14px;">
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#D-grad)"/><path d="M7 6 H13 V20 H26 V26 H7 Z" fill="#fff"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="url(#D-grad)" opacity="0.95"/><path d="M23 4 L28 4 L13 30 L8 30 Z" fill="#fff" opacity="0.45"/></svg></span>
+      <span>Leak<span class="brand-x">X</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- E: Stencil — outline only, mono-line -->
+<!-- ============================================================ -->
+<div class="card">
+  <div class="big">
+    <svg viewBox="0 0 32 32">
+      <defs>
+        <linearGradient id="E-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a875ff"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="url(#E-grad)"/>
+      <g stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="square" stroke-linejoin="miter">
+        <!-- L bracket -->
+        <polyline points="8,7 8,24 24,24"/>
+        <!-- X inside -->
+        <line x1="12" y1="9" x2="22" y2="21"/>
+        <line x1="22" y1="9" x2="12" y2="21"/>
+      </g>
+    </svg>
+  </div>
+  <div class="card-meta">
+    <span class="label">Option E</span>
+    <h3>Stencil mono-line</h3>
+    <p>Tout au trait fin, comme dessiné d'un seul stylo. Plus aéré, technique, "wireframe". Moins de masse, plus de respiration.</p>
+    <div class="previews">
+      <span class="preview-mark lg"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#E-grad)"/><g stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="square" stroke-linejoin="miter"><polyline points="8,7 8,24 24,24"/><line x1="12" y1="9" x2="22" y2="21"/><line x1="22" y1="9" x2="12" y2="21"/></g></svg></span>
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#E-grad)"/><g stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="square" stroke-linejoin="miter"><polyline points="8,7 8,24 24,24"/><line x1="12" y1="9" x2="22" y2="21"/><line x1="22" y1="9" x2="12" y2="21"/></g></svg></span>
+      <span class="preview-mark sm"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#E-grad)"/><g stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="square" stroke-linejoin="miter"><polyline points="8,7 8,24 24,24"/><line x1="12" y1="9" x2="22" y2="21"/><line x1="22" y1="9" x2="12" y2="21"/></g></svg></span>
+      <span class="size-label">40 / 28 / 16 px</span>
+    </div>
+    <div class="brand-lockup" style="margin-top:14px;">
+      <span class="preview-mark md"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="url(#E-grad)"/><g stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="square" stroke-linejoin="miter"><polyline points="8,7 8,24 24,24"/><line x1="12" y1="9" x2="22" y2="21"/><line x1="22" y1="9" x2="12" y2="21"/></g></svg></span>
+      <span>Leak<span class="brand-x">X</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- F: Off-grid violet — square slashed off, with notch -->
+<!-- ============================================================ -->
+<div class="card">
+  <div class="big">
+    <svg viewBox="0 0 32 32">
+      <defs>
+        <linearGradient id="F-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a875ff"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+      </defs>
+      <!-- Violet square with a corner cut diagonally (top-right) -->
+      <path d="M0 8 Q0 0 8 0 H22 L32 10 V24 Q32 32 24 32 H0 Z" fill="url(#F-grad)"/>
+      <!-- Inside: just an X (the L is the cut corner itself) -->
+      <path d="M11 9 L14 9 L23 21 L20 21 Z" fill="#fff"/>
+      <path d="M20 9 L23 9 L14 21 L11 21 Z" fill="#fff"/>
+      <!-- A small L notch hint -->
+      <rect x="6" y="23" width="14" height="3" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="card-meta">
+    <span class="label">Option F</span>
+    <h3>Asymétrique cut-corner</h3>
+    <p>La forme du carré elle-même est tronquée (la "fuite" matérialisée), X centré, et un trait horizontal en bas qui termine en bracket L. Différenciant, distinctif.</p>
+    <div class="previews">
+      <span class="preview-mark lg" style="border-radius:0"><svg viewBox="0 0 32 32"><path d="M0 8 Q0 0 8 0 H22 L32 10 V24 Q32 32 24 32 H0 Z" fill="url(#F-grad)"/><path d="M11 9 L14 9 L23 21 L20 21 Z" fill="#fff"/><path d="M20 9 L23 9 L14 21 L11 21 Z" fill="#fff"/><rect x="6" y="23" width="14" height="3" fill="#fff"/></svg></span>
+      <span class="preview-mark md" style="border-radius:0"><svg viewBox="0 0 32 32"><path d="M0 8 Q0 0 8 0 H22 L32 10 V24 Q32 32 24 32 H0 Z" fill="url(#F-grad)"/><path d="M11 9 L14 9 L23 21 L20 21 Z" fill="#fff"/><path d="M20 9 L23 9 L14 21 L11 21 Z" fill="#fff"/><rect x="6" y="23" width="14" height="3" fill="#fff"/></svg></span>
+      <span class="preview-mark sm" style="border-radius:0"><svg viewBox="0 0 32 32"><path d="M0 8 Q0 0 8 0 H22 L32 10 V24 Q32 32 24 32 H0 Z" fill="url(#F-grad)"/><path d="M11 9 L14 9 L23 21 L20 21 Z" fill="#fff"/><path d="M20 9 L23 9 L14 21 L11 21 Z" fill="#fff"/><rect x="6" y="23" width="14" height="3" fill="#fff"/></svg></span>
+      <span class="size-label">40 / 28 / 16 px</span>
+    </div>
+    <div class="brand-lockup" style="margin-top:14px;">
+      <span class="preview-mark md" style="border-radius:0"><svg viewBox="0 0 32 32"><path d="M0 8 Q0 0 8 0 H22 L32 10 V24 Q32 32 24 32 H0 Z" fill="url(#F-grad)"/><path d="M11 9 L14 9 L23 21 L20 21 Z" fill="#fff"/><path d="M20 9 L23 9 L14 21 L11 21 Z" fill="#fff"/><rect x="6" y="23" width="14" height="3" fill="#fff"/></svg></span>
+      <span>Leak<span class="brand-x">X</span></span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer style="max-width:1280px;margin:48px auto 0;color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:12px;text-align:center;">
+  Choisis l'option qui te plaît : <strong style="color:var(--violet-hi);">A</strong>, <strong style="color:var(--violet-hi);">B</strong>, <strong style="color:var(--violet-hi);">C</strong>, <strong style="color:var(--violet-hi);">D</strong>, <strong style="color:var(--violet-hi);">E</strong> ou <strong style="color:var(--violet-hi);">F</strong> — je l'applique partout sur le site.
+</footer>
+</body>
+</html>
