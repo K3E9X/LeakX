@@ -1,0 +1,20 @@
+[
+  {
+    "victim": "Exemple Cible SA",
+    "group": "lockbit3",
+    "domain": "exemple-cible.fr",
+    "country": "FR",
+    "discovered": "2026-05-14 09:12:00",
+    "claim_url": "http://lockbitexample.onion/post/exemple-cible",
+    "description": "Donnée fictive de test — ne correspond à aucune victime réelle."
+  },
+  {
+    "victim": "Demo Industries",
+    "group": "akira",
+    "domain": "",
+    "country": "FR",
+    "attackdate": "2026-05-10",
+    "url": "http://akiraexample.onion/leaks/demo-industries",
+    "description": "Donnée fictive de test — ne correspond à aucune victime réelle."
+  }
+]
