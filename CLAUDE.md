@@ -60,6 +60,7 @@ Le repo contient un **prototype haute-fidélité React+HTML** (pas encore Next.j
 - Alertes scopées au périmètre + suivi par organisation (`/v1/alerts`), quota d'usage (`/v1/usage`), flux SSE (`/v1/events`), résolution (`/v1/leaks/:id/resolve`)
 - Collecteurs : `CERT-FR` (avis officiels ANSSI), `CISA KEV` (vulnérabilités activement exploitées), `NVD` (référentiel CVE NIST), `ransomware.live` (revendications de victimes ransomware), `abuse.ch` (ThreatFox, URLhaus, MalwareBazaar, Feodo)
 - Cron de purge 30 jours implémenté (`purge_expired`)
+- Déploiement : `deploy/` (Caddy + TLS auto, services systemd, runbook SSH) — voir `deploy/README.md`
 - Voir `api/README.md`
 
 ### **À faire** côté design (optionnel, peuvent attendre)

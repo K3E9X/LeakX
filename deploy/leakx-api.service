@@ -1,0 +1,16 @@
+[Unit]
+Description=LeakX API (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=leakx
+Group=leakx
+WorkingDirectory=/opt/leakx/api
+EnvironmentFile=/opt/leakx/api/.env
+ExecStart=/opt/leakx/api/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
