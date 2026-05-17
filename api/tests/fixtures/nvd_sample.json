@@ -1,0 +1,37 @@
+{
+  "resultsPerPage": 2,
+  "totalResults": 2,
+  "vulnerabilities": [
+    {
+      "cve": {
+        "id": "CVE-2026-20001",
+        "published": "2026-05-14T10:00:00.000",
+        "lastModified": "2026-05-15T08:00:00.000",
+        "descriptions": [
+          {"lang": "en", "value": "Donnée fictive de test — remote code execution in an example product."},
+          {"lang": "fr", "value": "Donnée fictive de test."}
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {"cvssData": {"baseScore": 9.8, "baseSeverity": "CRITICAL"}}
+          ]
+        }
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2026-20002",
+        "published": "2026-05-12T09:00:00.000",
+        "lastModified": "2026-05-13T09:00:00.000",
+        "descriptions": [
+          {"lang": "en", "value": "Donnée fictive de test — low severity information disclosure."}
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {"cvssData": {"baseScore": 3.1, "baseSeverity": "LOW"}}
+          ]
+        }
+      }
+    }
+  ]
+}
