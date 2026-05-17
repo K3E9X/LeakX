@@ -1,0 +1,13 @@
+[
+  {
+    "ip_address": "203.0.113.55",
+    "port": 8080,
+    "status": "online",
+    "hostname": null,
+    "malware": "Dridex",
+    "first_seen": "2026-05-13 12:00:00",
+    "last_online": "2026-05-16",
+    "as_number": 64500,
+    "country": "RU"
+  }
+]

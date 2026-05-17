@@ -1,4 +1,10 @@
 """Registre des collecteurs LeakX. Ajouter ici toute nouvelle source."""
+from .abusech import (
+    FeodoCollector,
+    MalwareBazaarCollector,
+    ThreatFoxCollector,
+    UrlhausCollector,
+)
 from .base import Collector
 from .cert_fr import CertFrCollector
 from .cisa_kev import CisaKevCollector
@@ -10,4 +16,8 @@ ALL_COLLECTORS: list[type[Collector]] = [
     CisaKevCollector,
     NvdCollector,
     RansomwareLiveCollector,
+    ThreatFoxCollector,
+    UrlhausCollector,
+    MalwareBazaarCollector,
+    FeodoCollector,
 ]

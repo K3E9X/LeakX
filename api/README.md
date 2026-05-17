@@ -93,6 +93,8 @@ Chaque source est un `Collector` (`app/sources/`). Collecteurs branchés :
 - **CISA KEV** — vulnérabilités activement exploitées (catalogue officiel CISA).
 - **NVD (NIST)** — référentiel officiel des CVE et de leur scoring CVSS.
 - **ransomware.live** — revendications publiques de victimes ransomware.
+- **abuse.ch** — 4 flux d'IOC : ThreatFox, URLhaus, MalwareBazaar, Feodo Tracker
+  (clé `LEAKX_ABUSECH_KEY` requise).
 
 Pour en ajouter un : créer la classe, l'enregistrer dans `app/sources/__init__.py`.
 

@@ -1,0 +1,13 @@
+{
+  "query_status": "ok",
+  "urls": [
+    {
+      "url": "http://exemple-malveillant.test/payload/setup.exe",
+      "host": "exemple-malveillant.test",
+      "url_status": "online",
+      "threat": "malware_download",
+      "date_added": "2026-05-14 09:00:00 UTC",
+      "urlhaus_reference": "https://urlhaus.abuse.ch/url/800001/"
+    }
+  ]
+}
