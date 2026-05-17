@@ -1,0 +1,10 @@
+[Unit]
+Description=LeakX - livraison periodique des webhooks
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

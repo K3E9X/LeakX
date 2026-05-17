@@ -1,0 +1,11 @@
+[Unit]
+Description=LeakX - collecte des sources de renseignement
+After=network.target
+
+[Service]
+Type=oneshot
+User=leakx
+Group=leakx
+WorkingDirectory=/opt/leakx/api
+EnvironmentFile=/opt/leakx/api/.env
+ExecStart=/opt/leakx/api/.venv/bin/python scripts/run_collectors.py

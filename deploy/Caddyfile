@@ -1,0 +1,11 @@
+# LeakX — reverse proxy + TLS automatique (Let's Encrypt).
+# À placer dans /etc/caddy/Caddyfile, puis : systemctl reload caddy
+#
+# Le certificat TLS est obtenu automatiquement dès que api.leakx.fr
+# pointe (DNS) vers l'IP publique de l'instance.
+
+api.leakx.fr {
+	reverse_proxy 127.0.0.1:8000
+	encode gzip
+	header -Server
+}

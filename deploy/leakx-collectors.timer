@@ -1,0 +1,10 @@
+[Unit]
+Description=LeakX - collecte periodique des sources
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
