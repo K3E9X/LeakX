@@ -29,6 +29,7 @@ python scripts/run_collectors.py
 python scripts/run_collectors.py \
   --fixture cert_fr=tests/fixtures/cert_fr_sample.xml \
   --fixture cisa_kev=tests/fixtures/cisa_kev_sample.json \
+  --fixture nvd=tests/fixtures/nvd_sample.json \
   --fixture ransomware_live=tests/fixtures/ransomware_live_sample.json
 
 # Tests
@@ -90,6 +91,7 @@ Chaque source est un `Collector` (`app/sources/`). Collecteurs branchés :
 
 - **CERT-FR** — avis, alertes et rapports CTI du CERT national (ANSSI), source officielle.
 - **CISA KEV** — vulnérabilités activement exploitées (catalogue officiel CISA).
+- **NVD (NIST)** — référentiel officiel des CVE et de leur scoring CVSS.
 - **ransomware.live** — revendications publiques de victimes ransomware.
 
 Pour en ajouter un : créer la classe, l'enregistrer dans `app/sources/__init__.py`.
