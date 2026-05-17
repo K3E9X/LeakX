@@ -58,7 +58,7 @@ Le repo contient un **prototype haute-fidélité React+HTML** (pas encore Next.j
 - Rate limiting par tier : débit/minute + quota mensuel, headers `X-RateLimit-*`, `429 rate_limited`, `402 payment_required`
 - Webhooks signés HMAC SHA-256 (`X-LeakX-Signature`), livraison avec backoff (`/v1/webhooks` + worker `deliver_webhooks`)
 - Alertes scopées au périmètre + suivi par organisation (`/v1/alerts`), quota d'usage (`/v1/usage`), flux SSE (`/v1/events`), résolution (`/v1/leaks/:id/resolve`)
-- Collecteurs : `CERT-FR` (avis officiels ANSSI), `CISA KEV` (vulnérabilités activement exploitées), `NVD` (référentiel CVE NIST), `ransomware.live` (revendications de victimes ransomware)
+- Collecteurs : `CERT-FR` (avis officiels ANSSI), `CISA KEV` (vulnérabilités activement exploitées), `NVD` (référentiel CVE NIST), `ransomware.live` (revendications de victimes ransomware), `abuse.ch` (ThreatFox, URLhaus, MalwareBazaar, Feodo)
 - Cron de purge 30 jours implémenté (`purge_expired`)
 - Voir `api/README.md`
 

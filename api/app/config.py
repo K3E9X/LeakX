@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     user_agent: str = "LeakX-collector/0.1 (+https://leakx.fr)"
     # KYB : nombre de résolveurs DNS devant voir l'enregistrement de vérification.
     kyb_min_resolvers: int = 2
+    # Clé d'API abuse.ch (header Auth-Key) — flux ThreatFox/URLhaus/MalwareBazaar/Feodo.
+    abusech_key: str = ""
 
 
 settings = Settings()
